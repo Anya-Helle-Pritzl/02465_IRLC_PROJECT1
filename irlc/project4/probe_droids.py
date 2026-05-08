@@ -17,13 +17,51 @@ class TinyGridworld(GridworldEnvironment):
     def __init__(self, *args, **kwargs):
         super().__init__(small_circle_grid, *args, **kwargs)
 
-# TODO: Code has been removed from here. 
+
+class LinearFeatureEncoder(FeatureEncoder):
+    """Feature encoder using linear features: z_lin(s) = [1, u, v]"""
+    def __init__(self, env):
+        self.env = env
+        self.H = env.mdp.height
+        self.W = env.mdp.width
+        self.l = 3  # dimension of z_lin(s) = [1, u, v]
+        self.na = env.action_space.n  # number of actions
+        super().__init__(env)
+
+    @property
+    def d(self):
+        """Total feature dimension: 4*l (action-dependent construction)"""
+        return 4 * self.l
+
+    def x(self, s, a):
+        """
+        Compute action-dependent feature vector x(s, a).
+        For action a, place z_lin(s) in the a-th block of 4 blocks.
+        """
+        i, j = s
+        u = i / (self.H - 1) if self.H > 1 else 0
+        v = j / (self.W - 1) if self.W > 1 else 0
+        z_lin = np.array([1.0, u, v])
+        
+        # Create action-dependent feature vector
+        x = np.zeros(self.d)
+        start_idx = a * self.l
+        x[start_idx:start_idx + self.l] = z_lin
+        return x
+
 
 def linear_experiment(episodes=10000, alpha=0.02, states_and_actions=( ((0,0),0) )):
     env = TinyGridworld()
-    # TODO: Code has been removed from here.
-    raise NotImplementedError("Your implementation here.")
-    q_values = {(s, a): agent.Q(s, a) for s, a in states_and_actions} # Example: If you trained an agent, this will extract the q-values.
+    
+    # Create the linear feature encoder and agent
+    q_encoder = LinearFeatureEncoder(env)
+    agent = LinearSemiGradSarsa(env, gamma=1.0, epsilon=1.0, alpha=alpha, q_encoder=q_encoder)
+    
+    # Train the agent
+    train(env, agent, num_episodes=episodes, verbose=False)
+    
+    # Extract Q-values for the specified states and actions
+    q_values = {(s, a): agent.Q(s, a) for s, a in states_and_actions}
     return q_values
 
 def quadratic_experiment(episodes=10000, alpha=0.02, states_and_actions=( ((0,0),0) )):

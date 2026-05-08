@@ -22,8 +22,16 @@ class LinearSemiGradQAgent(QAgent):
         self.Q = LinearQEncoder(env, tilings=8) if q_encoder is None else q_encoder 
 
     def train(self, s, a, r, sp, done=False, info_s=None, info_sp=None): 
-        # TODO: 4 lines missing.
-        raise NotImplementedError("Implement function body")
+        # Semi-gradient Q-learning update
+        # Get the greedy next action
+        ap_greedy = self.Q.get_optimal_action(sp, info_sp) if not done else None
+        
+        # Compute the TD target
+        q_target = r + (0 if done else self.gamma * self.Q(sp, ap_greedy))
+        
+        # Compute TD error and update weights
+        delta = q_target - self.Q(s, a)
+        self.Q.w += self.alpha * delta * self.Q.x(s, a)
 
     def __str__(self):
         return f"LinearSemiGradQ{self.gamma}_{self.epsilon}_{self.alpha}"

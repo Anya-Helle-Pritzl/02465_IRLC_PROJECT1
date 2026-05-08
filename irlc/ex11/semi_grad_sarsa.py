@@ -18,13 +18,31 @@ class LinearSemiGradSarsa(LinearSemiGradQAgent):
         super().__init__(env, gamma, epsilon=epsilon, alpha=alpha, q_encoder=q_encoder)
 
     def pi(self, s, k, info=None): 
-        # TODO: 1 lines missing.
-        raise NotImplementedError("Implement function body")
+        # Epsilon-greedy action selection
+        if np.random.rand() < self.epsilon:
+            # Random action
+            if info is not None and 'mask' in info:
+                from irlc.ex08.rl_agent import _masked_actions
+                actions = _masked_actions(self.env.action_space, info['mask'])
+                return np.random.choice(actions)
+            else:
+                return self.env.action_space.sample()
+        else:
+            # Greedy action
+            return self.Q.get_optimal_action(s, info)
         return action
 
     def train(self, s, a, r, sp, done=False, info_s=None, info_sp=None):
-        # TODO: 4 lines missing.
-        raise NotImplementedError("Insert your solution and remove this error.")
+        # Semi-gradient Sarsa update
+        # Get the next action (for Sarsa)
+        ap = self.pi(sp, 0, info_sp)
+        
+        # Compute the TD target
+        q_target = r + (0 if done else self.gamma * self.Q(sp, ap))
+        
+        # Compute TD error and update weights
+        delta = q_target - self.Q(s, a)
+        self.Q.w += self.alpha * delta * self.Q.x(s, a)
 
         if sum(np.abs(self.Q.w)) > 1e5: raise Exception("Weights diverged. Decrease alpha")
 
