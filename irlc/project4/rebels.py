@@ -11,8 +11,62 @@ very_basic_grid = [['#',1, '#'],
                     ['#',1, '#']]
 
 
-# TODO: 21 lines missing.
-# raise NotImplementedError("I wrote an agent that inherited from the Q-agent, and updated the self.pi and self.train-functions to do UCB-based exploration.")
+class UCBAgent(QAgent):
+    """UCB agent that uses Upper Confidence Bound exploration instead of epsilon-greedy."""
+    def __init__(self, env, gamma=1.0, alpha=0.5, c=1.0):
+        super().__init__(env, gamma=gamma, alpha=alpha, epsilon=0)
+        self.c = c
+        # Track visit counts: N[s] = total visits to state s, N_sa[s,a] = total visits to action a in state s
+        self.N = TabularQ(env)  # Total state visits
+        self.N_sa = TabularQ(env)  # State-action visits
+
+    def pi(self, s, k, info=None):
+        """Return action using UCB exploration."""
+        import numpy as np
+        
+        if info is not None and 'seed' in info:
+            np.random.seed(info['seed'])
+        
+        # Get available actions
+        if info is not None and 'mask' in info:
+            available_actions = [a for a in range(len(info['mask'])) if info['mask'][a] == 1]
+        else:
+            available_actions = list(range(self.env.action_space.n))
+        
+        N_s = self.N[s, 0]  # Total visits to this state (stored in first action slot)
+        if N_s == 0:
+            N_s = 1  # Avoid division by zero on first visit
+        
+        # Compute UCB value for each action
+        max_ucb = -float('inf')
+        best_action = available_actions[0]
+        
+        for a in available_actions:
+            q_value = self.Q[s, a]
+            n_sa = self.N_sa[s, a]
+            if n_sa == 0:
+                # Unvisited actions have infinite UCB (high priority)
+                ucb = float('inf')
+            else:
+                exploration_bonus = self.c * np.sqrt(np.log(N_s) / n_sa)
+                ucb = q_value + exploration_bonus
+            
+            # Pick the action with highest UCB, breaking ties by lowest action index
+            if ucb > max_ucb:
+                max_ucb = ucb
+                best_action = a
+        
+        return best_action
+
+    def train(self, s, a, r, sp, done=False, info_s=None, info_sp=None):
+        """Update Q-values and visit counts."""
+        # Update visit counts
+        self.N[s, 0] += 1  # Increment total state visits
+        self.N_sa[s, a] += 1  # Increment state-action visits
+        
+        # Standard Q-learning update
+        a_star = self.Q.get_optimal_action(sp, info_sp)
+        self.Q[s, a] = self.Q[s, a] + self.alpha * (r + self.gamma * self.Q[sp, a_star] - self.Q[s, a])
 
 def get_ucb_actions(layout : list, alpha : float, c : float, episodes : int, plot=False) -> list: 
     """ Return the sequence of actions the agent tries in the environment with the given layout-string when trained over 'episodes' episodes.
@@ -31,8 +85,17 @@ def get_ucb_actions(layout : list, alpha : float, c : float, episodes : int, plo
     In other words, the return value should be a long list of integers corresponding to actions:
     actions = [0, 1, 2, ..., 1, 3, 2, 1, 0, ...]
     """
-    # TODO: 6 lines missing.
-    raise NotImplementedError("Implement function body")
+    render_mode = 'human' if plot else None
+    env = GridworldEnvironment(layout, render_mode=render_mode)
+    agent = UCBAgent(env, gamma=1.0, alpha=alpha, c=c)
+    stats, trajectories = train(env, agent, num_episodes=episodes, return_trajectory=True)
+    env.close()
+    
+    # Concatenate all action sequences, excluding the last dummy action from each trajectory
+    actions = []
+    for trajectory in trajectories:
+        actions.extend(trajectory.action[:-1])
+    
     return actions
 
 if __name__ == "__main__":
