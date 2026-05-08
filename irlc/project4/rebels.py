@@ -12,7 +12,7 @@ very_basic_grid = [['#',1, '#'],
 
 
 # TODO: 21 lines missing.
-raise NotImplementedError("I wrote an agent that inherited from the Q-agent, and updated the self.pi and self.train-functions to do UCB-based exploration.")
+# raise NotImplementedError("I wrote an agent that inherited from the Q-agent, and updated the self.pi and self.train-functions to do UCB-based exploration.")
 
 def get_ucb_actions(layout : list, alpha : float, c : float, episodes : int, plot=False) -> list: 
     """ Return the sequence of actions the agent tries in the environment with the given layout-string when trained over 'episodes' episodes.
