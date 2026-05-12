@@ -49,6 +49,29 @@ class LinearFeatureEncoder(FeatureEncoder):
         x[start_idx:start_idx + self.l] = z_lin
         return x
 
+class QuadraticFeatureEncoder(FeatureEncoder):
+    def __init__(self, env):
+        self.env = env
+        self.H = env.mdp.height
+        self.W = env.mdp.width
+        self.l = 6
+        self.na = env.action_space.n
+        super().__init__(env)
+
+    @property
+    def d(self):
+        return 4 * self.l
+
+    def x(self, s, a):
+        i, j = s
+        u = i / (self.H - 1) if self.H > 1 else 0
+        v = j / (self.W - 1) if self.W > 1 else 0
+        z_quad = np.array([1.0, u, v, u**2, v**2, u*v])
+
+        x = np.zeros(self.d)
+        start_idx = a * self.l
+        x[start_idx:start_idx + self.l] = z_quad
+        return x
 
 def linear_experiment(episodes=10000, alpha=0.02, states_and_actions=( ((0,0),0) )):
     env = TinyGridworld()
@@ -66,9 +89,10 @@ def linear_experiment(episodes=10000, alpha=0.02, states_and_actions=( ((0,0),0)
 
 def quadratic_experiment(episodes=10000, alpha=0.02, states_and_actions=( ((0,0),0) )):
     env = TinyGridworld()
-    # TODO: Code has been removed from here.
-    raise NotImplementedError("Your code here")
-    q_values = {(s, a): agent.Q(s, a) for s, a in states_and_actions}  # Example: If you trained an agent, this will extract the q-values.
+    q_encoder = QuadraticFeatureEncoder(env)
+    agent = LinearSemiGradSarsa(env, gamma=1.0, epsilon=1.0, alpha=alpha, q_encoder=q_encoder)
+    train(env, agent, num_episodes=episodes, verbose=False)
+    q_values = {(s, a): agent.Q(s, a) for s, a in states_and_actions}
     return q_values
 
 
